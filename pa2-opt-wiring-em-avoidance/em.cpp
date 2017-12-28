@@ -189,6 +189,7 @@ int main(int argc, char const *argv[])
 	//
 	bool found = true;
 	// while(found) {
+	show_routing_result();
 	for (int i = 0; i < 1; ++i) {
 		found = bellmanFord();
 		for (int j = 0; j < negative_cycle.size(); ++j)
@@ -196,6 +197,7 @@ int main(int argc, char const *argv[])
 		cout << endl;
 		if (found) 
 			remove_negative_cycle(negative_cycle);
+		show_routing_result();
 	}
 	//
 	cout << "Routing Completed" << endl;
@@ -415,7 +417,7 @@ void update_rGraph (int src, int snk) {
 }
 
 void remove_negative_cycle(vector<int> path) {
-	int capacity = 0;
+	int capacity = INT_MAX;
 	int s, t;
 	bool in = false;
 	cout << "Checking for Bottleneck..." << endl;
@@ -427,16 +429,18 @@ void remove_negative_cycle(vector<int> path) {
 		//
 		if (u > N_SORC) { // sink (u) -> src (v)
 			int _u = u - N_SORC;
-			if (capacity < rGraph[v][_u].b_cap) {
+			if (capacity > rGraph[v][_u].b_cap) {
 				capacity = rGraph[v][_u].b_cap;
+				// cout << rGraph[v][_u].b_cap << endl; 
 				s = u;
 				t = v;
 			}
 		}
 		if (v > N_SORC) { // src (u) -> sink (v)
 			int _v = v - N_SORC;
-			if (capacity < rGraph[u][_v].f_cap) {
+			if (capacity > rGraph[u][_v].f_cap) {
 				capacity = rGraph[u][_v].f_cap;
+				// cout << rGraph[u][_v].f_cap << endl;
 				s = u;
 				t = v;
 			}
