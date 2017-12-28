@@ -262,17 +262,17 @@ void show_nodes(void) {
 	cout << "[SOURCES]" << endl;
 	for (int i = 0; i < N_SORC; ++i) {
 		cout << "Node #" << i + 1 << ": (";
-		cout << setw(3) << sources[i].x << ", ";
-		cout << setw(3) << sources[i].y << ")" ;
-		cout << " capacity = " << setw(3) << sources[i].capacity;
+		cout << setw(5) << sources[i].x << ", ";
+		cout << setw(5) << sources[i].y << ")" ;
+		cout << " capacity = " << setw(5) << sources[i].capacity;
 		cout << endl;
 	}
-	cout << "[SINKS]" << endl;
+	cout << endl << "[SINKS]" << endl;
 	for (int i = 0; i < N_SINK; ++i) {
 		cout << "Node #" << i + 1 << ": (";
-		cout << setw(3) << sinks[i].x << ", ";
-		cout << setw(3) << sinks[i].y << ")" ;
-		cout << " capacity = " << setw(3) << sinks[i].capacity << endl;
+		cout << setw(5) << sinks[i].x << ", ";
+		cout << setw(5) << sinks[i].y << ")" ;
+		cout << " capacity = " << setw(5) << sinks[i].capacity << endl;
 	}
 }
 
@@ -499,7 +499,7 @@ void remove_negative_cycle(vector<int> path) {
 		// in = true;
 		// cout << capacity << endl;
 	}
-	cout << "Bottleneck at " << s << " -> " << t << " | Capacity = " << setw(3) << capacity << endl;
+	cout << "Bottleneck at " << setw(4) << s << " -> " << t << setw(4) << " | Capacity = " << setw(3) << capacity << endl;
 	// push bottleneck flow to the graph
 	cout << "Removing Negative Cycle..." << endl;
 	for (int i = 0; i < path.size(); ++i) {
@@ -593,11 +593,13 @@ bool bellmanFord(void) {
 				}
 			}
 		}
+		/*
 		if (update == false) {
 			cout << "Early stopped due to no update on edges." << endl;
 			getchar();
 			break;
 		}
+		*/
 	}
 	// show_distanceTable();
 	// for (u, v) in E:
@@ -691,4 +693,4 @@ bool bellmanFord(void) {
 		cout << "No negative cycle found.\n";// << negative_cycle.size() << endl;
 	}
 	return found;
-} 
+}
