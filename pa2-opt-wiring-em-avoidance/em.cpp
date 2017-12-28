@@ -50,15 +50,16 @@ edge_r** rGraph;
 int** disMatrix;
 vector<node> sources;
 vector<node> sinks;
+vector<int> negative_cycle;
 
 int distance(node*, node*);
 void show_nodes(void);
 void show_all_graph(void);
 void show_distanceTable(void);
-void update_edge (int src, int snk);
+void update_Graph (int src, int snk);
 void update_rGraph (int src, int snk);
 int find_bottleneck(vector<int> path);
-vector<int> bellmanFord(void);
+bool bellmanFord(void);
 
 int main(int argc, char const *argv[])
 {
@@ -172,7 +173,7 @@ int main(int argc, char const *argv[])
 				cout << "Exception occurred, exiting..." << endl;
 				return -1;
 			}
-			update_edge(i, j);
+			update_Graph(i, j);
 			//
 			SKIP:
 			update_rGraph(i, j);
@@ -182,8 +183,15 @@ int main(int argc, char const *argv[])
 	cout << endl << "Graph initialised:" << endl;
 	show_all_graph();
 	//
-	vector<int> negative_cycle = bellmanFord();
-	int bottleneck = find_bottleneck(negative_cycle);
+	bool found;// = true;
+	while(found) {
+	// for (int i = 0; i < 1; ++i) {
+		found = bellmanFord();
+		// cout << found << endl;
+		if (found) 
+			find_bottleneck(negative_cycle);
+	}
+	// found = bellmanFord();
 	return 0;
 }
 
@@ -232,6 +240,21 @@ void show_all_graph(void) {
 		cout << "(" << setw(3) << sinks[i].x << ", " << setw(3) << sinks[i].y << ")";
 		cout << " | " << setw(4) << sinks[i].capacity;
 		cout << " |  " << setw(5) << sinks[i].remain << " |" << endl;
+	}
+	cout << endl;
+	cout << "Graph" << endl;
+	cout << "    Node     Coordinate   UID         Node    Coordinate   UID  Length  Flow  Capacity"<< endl;
+	for (int i = 0; i < N_SORC; ++i) {
+		for (int j = 0; j < N_SINK; ++j) {
+			cout << " SORC #" << setw(3) << i << "   ";
+			cout << "(" << setw(3) << sources[i].x << ", " << setw(3) << sources[i].y << ")   ";
+			cout << setw(3) << sources[i].UID << "  ->  SINK #" << setw(3) << j;
+			cout << "  (" << setw(3) << sinks[j].x << ", " << setw(3) << sinks[j].y << ")   ";
+			cout << setw(3) << sinks[j].UID << "     " ;
+			cout << setw(3) << Edges[i][j].distance << "  ";
+			cout << setw(3) << Graph[i][j] << " ";
+			cout << setw(5) << Edges[i][j].capacity << endl;
+		}
 	}
 	cout << endl;
 	cout << "Residual Graph" << endl;
@@ -285,7 +308,7 @@ void show_distanceTable(void) {
 	cout << endl;
 }
 
-void update_edge (int src, int snk) {
+void update_Graph (int src, int snk) {
 	int flow = 0;
 	// cout << "Updating graph" << endl;
 	cout << endl;
@@ -325,37 +348,86 @@ void update_rGraph (int src, int snk) {
 
 int find_bottleneck(vector<int> path) {
 	int capacity = 0;
-	int btk_u, btk_v;
+	int s, t;
+	bool in = false;
+	cout << "Checking for Bottleneck..." << endl;
 	for (int i = 0; i < path.size(); ++i) {
-		// Edge (u, v)
+		// Edge (u, v) | u -> v
 		int u = path[(i + 1) % path.size()]; // uid
 		int v = path[i];
-		//cout << u << " -> " << v << ": ";
+		// cout << u << " -> " << v << ": ";
 		//
-		if (u > N_SORC) { // u -> v (sink -> src)
+		if (u > N_SORC) { // sink (u) -> src (v)
 			int _u = u - N_SORC;
 			if (capacity < rGraph[v][_u].b_cap) {
 				capacity = rGraph[v][_u].b_cap;
-				btk_u = u;
-				btk_v = v;
+				s = u;
+				t = v;
 			}
 		}
-		if (v > N_SORC) { // u -> v (src -> sink) 
+		if (v > N_SORC) { // src (u) -> sink (v)
 			int _v = v - N_SORC;
-			if (capacity < rGraph[_v][u].f_cap) {
-				capacity = rGraph[_v][u].f_cap;
-				btk_u = u;
-				btk_v = v;
+			if (capacity < rGraph[u][_v].f_cap) {
+				capacity = rGraph[u][_v].f_cap;
+				s = u;
+				t = v;
 			}
 		}
+		// in = true;
+		// cout << capacity << endl;
 	}
-	cout << "Bottleneck at " << btk_u << " -> " << btk_v << " | Capacity = " << setw(3) << capacity << endl;
+	cout << "Bottleneck at " << s << " -> " << t << " | Capacity = " << setw(3) << capacity << endl;
+	/*/ convert uid to local id
+	if (s > N_SORC) // src <- sink
+		s -= N_SORC;
+	if (t > N_SORC) // src -> sink
+		t -= N_SORC;
+	/*/
+	// push bottleneck flow to the graph
+	for (int i = 0; i < path.size(); ++i) {
+		// Edge (u, v) | v <- u
+		int u = path[i]; // uid
+		int v = path[(i + 1) % path.size()];
+		cout << u << " " << v << endl;
+		if (u > v) { // add flow: sink->src @ rGraph
+			Graph[v][u - N_SORC] += capacity;
+			update_Graph(v, u - N_SORC);
+			update_rGraph(v, u - N_SORC);
+		}
+		else { // revoke flow: src->sink @ rGraph
+			Graph[u][v - N_SORC] -= capacity;
+			update_Graph(u, v - N_SORC);
+			update_rGraph(u, v - N_SORC);
+		}
+		/*
+		if (u < N_SORC) { // src (u) -> sink (v)
+			v -= N_SORC;
+			Graph[u][v] += capacity;
+		}
+		if (u > N_SORC) { // src (v) <- sink (u)
+			u -= N_SORC;
+			Graph[v][u] -= capacity;
+			update_Graph(v, u);
+			update_rGraph(v, u);
+		}
+		if (v > N_SORC) { // src (u) -> sink (v)
+			v -= N_SORC;
+			Graph[u][v] += capacity;
+			update_Graph(u, v);
+			update_rGraph(u, v);
+		}
+		*/
+	}
+	cout << endl;
+	show_all_graph();
+	// Graph[s][t] += capacity;
+	//
 	return capacity;
 }
 
-vector<int> bellmanFord(void) {
+bool bellmanFord(void) {
 	dist_table = new int*[n_node];
-	vector<int> negative_cycle;
+	// vector<int> negative_cycle;
 	// dist_table = [sources] [sinks]
 	// for v in V:
 	// 	v.distance = infinity
@@ -507,5 +579,8 @@ vector<int> bellmanFord(void) {
 		cout << endl;
 		*/
 	}
-	return negative_cycle;
+	else {
+		cout << "No negative cycle found.\n";// << negative_cycle.size() << endl;
+	}
+	return found;
 }
