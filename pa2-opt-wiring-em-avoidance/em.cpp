@@ -5,6 +5,7 @@
 #include <ctime>
 #include <vector>
 #include <limits.h>
+#include <algorithm>
 
 #define SORC 0
 #define SINK 1
@@ -36,7 +37,17 @@ typedef struct {
 typedef struct {
 	int distance;
 	int capacity;
+	int src;
+	int snk;
 } edge;
+
+struct less_than_key
+{
+	inline bool operator() (const edge& e1, const edge& e2)
+	{
+		return (e1.distance < e2.distance);
+	}
+};
 
 int N_SORC;
 int N_SINK;
@@ -46,6 +57,7 @@ int** Graph;
 int** dist_table;
 edge** Edges;
 edge_r** rGraph;
+vector<edge>* proximity;
 
 int** disMatrix;
 vector<node> sources;
@@ -119,66 +131,83 @@ int main(int argc, char const *argv[])
 			//
 			Edges[i][j].distance = tmp_dis;
 			Edges[i][j].capacity = tmp_cap;
+			Edges[i][j].src = i;
+			Edges[i][j].snk = j;
 			rGraph[i][j].src  = i;
 			rGraph[i][j].dest = j;
 		}
 	}
+	//
+	proximity = new vector<edge>[N_SORC];
+	for (int i = 0; i < N_SORC; ++i) {
+		// proximity[i] = new vector<edge>[N_SORC];
+		for (int j = 0; j < N_SINK; ++j) {
+			proximity[i].push_back(Edges[i][j]);
+		}
+		// sort proximity[i] according to the distance
+		sort(proximity[i].begin(), proximity[i].end(), less_than_key());
+		// for (int x = 0; x < proximity[i].size(); ++x) 
+		//	cout << proximity[i][x].distance << " ";
+		cout << endl;
+	}
 	// show_all_graph();
 	// init flow
+	int nearest;
 	cout << "Initialising graph..." << endl;
 	for (int i = 0; i < N_SORC; ++i) {
 		for (int j = 0; j < N_SINK; ++j) { 
+			nearest = proximity[i][j].snk;
 			// (1) source has no flow available
 			if (sources[i].remain == 0) {
 				// cout << "[SKIP] source " << i << " -> sink " << j << ": no remain flow-out." << endl;
 				goto SKIP;
 			}
 			// (2) sink has no capacity to accept more
-			if (sinks[j].remain == 0) {
+			if (sinks[nearest].remain == 0) {
 				// cout << "[SKIP] source " << i << " -> sink " << j << ": no remain flow-in." << endl;
 				goto SKIP;
 			}
 			// (3) the edge is fulfilled (might not happen)
 			// if (Graph[i][j] == Edges[i][j]) {
-			if (Graph[i][j] == Edges[i][j].capacity) {
+			if (Graph[i][nearest] == Edges[i][nearest].capacity) {
 				// cout << "[SKIP] source " << i << " -> sink " << j << ": edge reaches limit." << endl;
 				goto SKIP;
 			}
 			//
 			// if (sources[i].remain <= Edges[i][j] - Graph[i][j]) {
-			if (sources[i].remain <= Edges[i][j].capacity - Graph[i][j]) {
+			if (sources[i].remain <= Edges[i][nearest].capacity - Graph[i][nearest]) {
 				// sources[i].remain <= sinks[j].remain
-				if (sources[i].remain <= sinks[j].remain) {
+				if (sources[i].remain <= sinks[nearest].remain) {
 					// cout << "remain && edge enough" << endl;
-					Graph[i][j] += sources[i].remain;
+					Graph[i][nearest] += sources[i].remain;
 				}
 				// sources[i].remain > sinks[j].remain
 				else { 
-					Graph[i][j] += sinks[j].remain;
+					Graph[i][nearest] += sinks[nearest].remain;
 				}
 			}
 			// else if (sources[i].remain > Edges[i][j] - Graph[i][j]) {
-			else if (sources[i].remain > Edges[i][j].capacity - Graph[i][j]) {
+			else if (sources[i].remain > Edges[i][nearest].capacity - Graph[i][nearest]) {
 				// sinks[j].remain <= Edges[i][j] - Graph[i][j]
 				// if (sinks[j].remain <= Edges[i][j] - Graph[i][j]) {
-				if (sinks[j].remain <= Edges[i][j].capacity - Graph[i][j]) {
-					Graph[i][j] += sinks[j].remain;
+				if (sinks[nearest].remain <= Edges[i][nearest].capacity - Graph[i][nearest]) {
+					Graph[i][nearest] += sinks[nearest].remain;
 				}
 				// sinks[j].remain > Edges[i][j] - Graph[i][j]
 				else { 
 					// Graph[i][j] += Edges[i][j] - Graph[i][j];
 					// Graph[i][j] = Edges[i][j];
-					Graph[i][j] = Edges[i][j].capacity;
+					Graph[i][nearest] = Edges[i][nearest].capacity;
 				}
 			}
 			else {
 				cout << "Exception occurred, exiting..." << endl;
 				return -1;
 			}
-			update_Graph(i, j);
+			update_Graph(i, nearest);
 			//
 			SKIP:
-			update_rGraph(i, j);
+			update_rGraph(i, nearest);
 		}
 	}
 	//
@@ -190,6 +219,7 @@ int main(int argc, char const *argv[])
 	//
 	bool found = true;
 	int count = 0;
+	cout << "in\n";
 	while(found) {
 		++count;
 	// show_routing_result();
@@ -516,7 +546,7 @@ bool bellmanFord(void) {
 		update = false;
 		// check all node
 		// cout << "Total  = " << n_node << endl;
-		for (int itr_node = 0; itr_node < n_node + 1; ++itr_node) {
+		for (int itr_node = 0; itr_node < n_node; ++itr_node) {
 			// check all outbound edges of the node
 			if (itr_node < N_SORC) { // for sources
 				// first half indices belong to sources
