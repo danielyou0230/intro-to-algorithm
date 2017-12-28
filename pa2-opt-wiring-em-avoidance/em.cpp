@@ -78,6 +78,7 @@ void check_flow (void);
 void update_rGraph (int src, int snk);
 void remove_negative_cycle(vector<int> path);
 bool bellmanFord(void);
+int calArea(void);
 
 int main(int argc, char const *argv[])
 {
@@ -154,7 +155,7 @@ int main(int argc, char const *argv[])
 		sort(proximity[i].begin(), proximity[i].end(), less_than_key());
 		// for (int x = 0; x < proximity[i].size(); ++x) 
 		//	cout << proximity[i][x].distance << " ";
-		cout << endl;
+		// cout << endl;
 	}
 	// show_all_graph();
 	// init flow
@@ -225,19 +226,18 @@ int main(int argc, char const *argv[])
 	//
 	bool found = true;
 	int count = 0;
-	cout << "in\n";
 	while(found) {
 		++count;
 	// show_routing_result();
 	// for (int i = 0; i < 1; ++i) {
 		found = bellmanFord();
-		for (int j = 0; j < negative_cycle.size(); ++j)
-			cout << negative_cycle[j] << " ";
-		cout << endl;
+		// for (int j = 0; j < negative_cycle.size(); ++j)
+		// 	cout << negative_cycle[j] << " ";
+		// cout << endl;
 		if (found) 
 			remove_negative_cycle(negative_cycle);
-		show_routing_result();
-		cout << "Iteration: " << setw(5) << count << endl;
+		// show_routing_result();
+		cout << "Area: " << setw(10) << calArea() << " Iteration: " << setw(5) << count << endl;
 		negative_cycle.clear();
 	}
 	//
@@ -245,6 +245,7 @@ int main(int argc, char const *argv[])
 	// show_routing_result();
 	check_flow();
 	int area = write_routing_result();
+	cout << "Area: " << setw(8) << area << endl;
 	f_out << area << endl;
 	f_out << entry;
 	return 0;
@@ -359,6 +360,18 @@ void show_distanceTable(void) {
 	cout << endl;
 }
 
+int calArea(void) {
+	int area = 0;
+	for (int i = 0; i < N_SORC; ++i) {
+		for (int j = 0; j < N_SINK; ++j) {
+			if (Graph[i][j] == 0)
+				continue;
+			area += Graph[i][j] * disMatrix[i][j];
+		}
+	}
+	return area;
+}
+
 void show_routing_result(void){
 	int area = 0;
 	for (int i = 0; i < N_SORC; ++i) {
@@ -393,41 +406,22 @@ int write_routing_result(void){
 void update_Graph (int src, int snk) {
 	int flow;
 	// cout << "Updating graph" << endl;
-	cout << endl;
 	// collect all outbound flows (KCL)
 	flow = 0;
 	for (int k = 0; k < N_SINK; ++k)
 		flow += Graph[src][k];
 	// update remain
-	/*
-	if (flow > sources[src].capacity) {
-		cout << "[UPDATE] Flow out of sources " << src << " is invalid: ";
-	}
-	// else {
-		sources[src].remain = sources[src].capacity - flow;
-		cout << "[UPDATE] Flow out of sources " << src << " succeed: ";
-	}
-	*/
 	sources[src].remain = sources[src].capacity - flow;
-	cout << "[UPDATE] Flow out of sources " << src << " updated: ";
-	cout << flow  << "/" << sources[src].capacity << endl;
+	// cout << "[UPDATE] Flow out of sources " << src << " updated: ";
+	// cout << flow  << "/" << sources[src].capacity << endl;
 	// collect all inbound flows (KCL)
 	flow = 0;
 	for (int k = 0; k < N_SORC; ++k)
 		flow += Graph[k][snk];
 	// update remain
-	/*
-	if (flow > sinks[snk].capacity) {
-		cout << "[UPDATE] Flow into sink " << snk << " is invalid: ";
-	}
-	else {
-		sinks[snk].remain = sinks[snk].capacity - flow;
-		cout << "[UPDATE] Flow into sink " << snk << " succeed: ";
-	}
-	*/
 	sinks[snk].remain = sinks[snk].capacity - flow;
-		cout << "[UPDATE] Flow into sink " << snk << " updated: ";
-	cout << flow  << "/" << sinks[snk].capacity << endl;
+	// cout << "[UPDATE] Flow into sink " << snk << " updated: ";
+	// cout << flow  << "/" << sinks[snk].capacity << endl;
 }
 
 void check_flow (void) {
@@ -506,12 +500,6 @@ void remove_negative_cycle(vector<int> path) {
 		// cout << capacity << endl;
 	}
 	cout << "Bottleneck at " << s << " -> " << t << " | Capacity = " << setw(3) << capacity << endl;
-	/*/ convert uid to local id
-	if (s > N_SORC) // src <- sink
-		s -= N_SORC;
-	if (t > N_SORC) // src -> sink
-		t -= N_SORC;
-	/*/
 	// push bottleneck flow to the graph
 	cout << "Removing Negative Cycle..." << endl;
 	for (int i = 0; i < path.size(); ++i) {
@@ -562,15 +550,11 @@ bool bellmanFord(void) {
 		}
 	}
 	*/
-	// cout << "Initialised Distance Table" << endl;
-	// show_distanceTable();
 	// 
 	bool update;
 	for (int i = 0; i < n_node; ++i) { // |V| - 1
-		// cout << "Iteration #" << setw(5) << i + 1 << "/"<< setw(5) << n_node << endl;
 		update = false;
 		// check all node
-		// cout << "Total  = " << n_node << endl;
 		for (int itr_node = 0; itr_node < n_node; ++itr_node) {
 			// check all outbound edges of the node
 			if (itr_node < N_SORC) { // for sources
@@ -580,18 +564,12 @@ bool bellmanFord(void) {
 				for (int itr = 0; itr < N_SINK; ++itr) {
 					int weight = rGraph[sorc_idx][itr].f_dist;
 					int idx_sink = N_SORC + itr;
-					//
-					if (weight == 0) {
-						// cout << itr_node << " -> " << idx_sink << " " << weight << endl;
+					if (weight == 0)
 						continue;
-					}
 					// update all connected sinks
 					if (dist_table[itr_node][DISTANCE] + weight < dist_table[idx_sink][DISTANCE]) {
 						dist_table[idx_sink][DISTANCE] = dist_table[itr_node][DISTANCE] + weight;
-						// dist_table[idx_sink][PARENT] = idx_sink;
-						// cout << "[sorc " << itr_node << " PARENT = " << dist_table[idx_sink][PARENT] << endl;
 						dist_table[idx_sink][PARENT] = itr_node;
-						// cout << "sink " << idx_sink << " PARENT = " << dist_table[idx_sink][PARENT] << endl;
 						update = true;
 					}
 				}
@@ -600,22 +578,16 @@ bool bellmanFord(void) {
 			else { // for sinks
 				// last half indices belong to sinks
 				int sink_idx = itr_node - N_SORC; 
-				// 
 				for (int itr = 0; itr < N_SORC; ++itr) {
 					int weight = rGraph[itr][sink_idx].b_dist;
 					int idx_sorc = itr;
 					//
-					if (weight == 0) {
-						// cout << itr << " <- " << itr_node << " " << weight << endl;
+					if (weight == 0)
 						continue;
-					}
 					// update all connected sources
 					if (dist_table[itr_node][DISTANCE] + weight < dist_table[idx_sorc][DISTANCE]) {
 						dist_table[idx_sorc][DISTANCE] = dist_table[itr_node][DISTANCE] + weight;
-						// dist_table[idx_sorc][PARENT] = idx_sorc;
-						// cout << "[sink " << itr_node << " PARENT = " << dist_table[idx_sorc][PARENT] << endl;
 						dist_table[idx_sorc][PARENT] = itr_node;
-						// cout << "sorc " << idx_sorc << " PARENT = " << dist_table[idx_sorc][PARENT] << endl;
 						update = true;
 					}
 				}
@@ -623,11 +595,11 @@ bool bellmanFord(void) {
 		}
 		if (update == false) {
 			cout << "Early stopped due to no update on edges." << endl;
+			getchar();
 			break;
 		}
-		//cout << endl;
 	}
-	show_distanceTable();
+	// show_distanceTable();
 	// for (u, v) in E:
 	// 	if v.distance > u.distance + weight(u, v):
 	// 		print "A negative weight cycle exists"
@@ -643,7 +615,6 @@ bool bellmanFord(void) {
 			weight = rGraph[i][j].f_dist;
 			if (weight != 0) {
 				if (dist_table[v][DISTANCE] > dist_table[u][DISTANCE] + weight) {
-					// cout << "Negative cycle found on src#" << rGraph[i][j].src << " to snk#" << rGraph[i][j].dest << endl;
 					cout << "Negative cycle found" << endl;
 					//
 					index = v;
@@ -658,7 +629,7 @@ bool bellmanFord(void) {
 					//
 					int begin = index;
 					while (true) {
-						cout << index << " <- ";
+						// cout << index << " <- ";
 						negative_cycle.push_back(index);
 						index = dist_table[index][PARENT];
 						if (index == begin) {
@@ -666,7 +637,7 @@ bool bellmanFord(void) {
 							break;
 						}
 					}
-					cout << index << endl;
+					// cout << index << endl;
 				}
 			} // end checking forward edge
 			// backward
@@ -687,7 +658,7 @@ bool bellmanFord(void) {
 					}
 					int begin = index;
 					while (true) {
-						cout << index << " <- ";
+						// cout << index << " <- ";
 						negative_cycle.push_back(index);
 						index = dist_table[index][PARENT];
 						if (index == v) {
@@ -699,7 +670,7 @@ bool bellmanFord(void) {
 							break;
 						}
 					} // end printing
-					cout << index << endl;
+					// cout << index << endl;
 				}
 			} // end checking backward edge
 			if (found)
@@ -720,4 +691,4 @@ bool bellmanFord(void) {
 		cout << "No negative cycle found.\n";// << negative_cycle.size() << endl;
 	}
 	return found;
-}
+} 
