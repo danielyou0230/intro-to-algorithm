@@ -183,14 +183,17 @@ int main(int argc, char const *argv[])
 	}
 	//
 	cout << endl << "Graph initialised:" << endl;
-	show_all_graph();
+	// show_all_graph();
 	check_flow();
 	cout << endl;
+	// show_routing_result();
 	//
 	bool found = true;
-	// while(found) {
-	show_routing_result();
-	for (int i = 0; i < 1; ++i) {
+	int count = 0;
+	while(found) {
+		++count;
+	// show_routing_result();
+	// for (int i = 0; i < 1; ++i) {
 		found = bellmanFord();
 		for (int j = 0; j < negative_cycle.size(); ++j)
 			cout << negative_cycle[j] << " ";
@@ -198,10 +201,13 @@ int main(int argc, char const *argv[])
 		if (found) 
 			remove_negative_cycle(negative_cycle);
 		show_routing_result();
+		cout << "Iteration: " << setw(5) << count << endl;
+		negative_cycle.clear();
 	}
 	//
 	cout << "Routing Completed" << endl;
-	show_routing_result();
+	// show_routing_result();
+	check_flow();
 	return 0;
 }
 
@@ -219,10 +225,6 @@ void show_nodes(void) {
 		cout << setw(3) << sources[i].x << ", ";
 		cout << setw(3) << sources[i].y << ")" ;
 		cout << " capacity = " << setw(3) << sources[i].capacity;
-		// cout << ", distance: ";
-		for (int j = 0; j < sinks.size(); ++j) {
-			cout << setw(3) << disMatrix[i][j] << " | ";
-		}
 		cout << endl;
 	}
 	cout << "[SINKS]" << endl;
@@ -390,7 +392,7 @@ void check_flow (void) {
 		}
 	}
 	// collect all inbound flows (KCL)
-	for (int snk = 0; snk < N_SORC; ++snk) {
+	for (int snk = 0; snk < N_SINK; ++snk) {
 		flow = 0;
 		for (int k = 0; k < N_SORC; ++k)
 			flow += Graph[k][snk];
@@ -475,7 +477,7 @@ void remove_negative_cycle(vector<int> path) {
 	}
 	check_flow();
 	cout << endl;
-	show_all_graph();
+	// show_all_graph();
 }
 
 bool bellmanFord(void) {
@@ -563,13 +565,11 @@ bool bellmanFord(void) {
 					}
 				}
 			}
-			// if (update == false){
-			// 	cout << "Early stopped due to no update on edges." << endl;
-			//	break;
-			//}
 		}
-		// if (update == false)
-		//	break;
+		if (update == false) {
+			cout << "Early stopped due to no update on edges." << endl;
+			break;
+		}
 		//cout << endl;
 	}
 	show_distanceTable();
