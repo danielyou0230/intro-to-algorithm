@@ -6,6 +6,7 @@
 #include <vector>
 #include <limits.h>
 #include <algorithm>
+#include <string>
 
 #define SORC 0
 #define SINK 1
@@ -64,11 +65,14 @@ vector<node> sources;
 vector<node> sinks;
 vector<int> negative_cycle;
 
+string entry;
+
 int distance(node*, node*);
 void show_nodes(void);
 void show_all_graph(void);
 void show_distanceTable(void);
 void show_routing_result(void);
+int write_routing_result(void);
 void update_Graph (int src, int snk);
 void check_flow (void);
 void update_rGraph (int src, int snk);
@@ -79,7 +83,9 @@ int main(int argc, char const *argv[])
 {
 	int tmp_cap;
 	ifstream f_in;
+	ofstream f_out;
 	f_in.open(argv[1], ifstream::in);
+	f_out.open(argv[2]);
 	f_in >> n_node;
 	cout << "Total number of nodes: " << n_node << endl;
 	//
@@ -238,6 +244,9 @@ int main(int argc, char const *argv[])
 	cout << "Routing Completed" << endl;
 	// show_routing_result();
 	check_flow();
+	int area = write_routing_result();
+	f_out << area << endl;
+	f_out << entry;
 	return 0;
 }
 
@@ -363,6 +372,22 @@ void show_routing_result(void){
 		}
 	}
 	cout << "Area = " << setw(5) << area << endl;
+}
+
+int write_routing_result(void){
+	int area = 0;
+	for (int i = 0; i < N_SORC; ++i) {
+		for (int j = 0; j < N_SINK; ++j) {
+			if (Graph[i][j] == 0)
+				continue;
+			entry += to_string(sources[i].x) + " " + to_string(sources[i].y) + " ";
+			entry += to_string(sinks[j].x) + " " + to_string(sinks[j].y) + " ";
+			entry += to_string(Graph[i][j]) + "\n";
+			area += Graph[i][j] * disMatrix[i][j];
+		}
+	}
+	cout << "Area = " << setw(5) << area << endl;
+	return area;
 }
 
 void update_Graph (int src, int snk) {
