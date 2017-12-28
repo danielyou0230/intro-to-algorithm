@@ -56,9 +56,11 @@ int distance(node*, node*);
 void show_nodes(void);
 void show_all_graph(void);
 void show_distanceTable(void);
+void show_routing_result(void);
 void update_Graph (int src, int snk);
+void check_flow (void);
 void update_rGraph (int src, int snk);
-int find_bottleneck(vector<int> path);
+void remove_negative_cycle(vector<int> path);
 bool bellmanFord(void);
 
 int main(int argc, char const *argv[])
@@ -182,16 +184,22 @@ int main(int argc, char const *argv[])
 	//
 	cout << endl << "Graph initialised:" << endl;
 	show_all_graph();
+	check_flow();
+	cout << endl;
 	//
-	bool found;// = true;
-	while(found) {
-	// for (int i = 0; i < 1; ++i) {
+	bool found = true;
+	// while(found) {
+	for (int i = 0; i < 1; ++i) {
 		found = bellmanFord();
-		// cout << found << endl;
+		for (int j = 0; j < negative_cycle.size(); ++j)
+			cout << negative_cycle[j] << " ";
+		cout << endl;
 		if (found) 
-			find_bottleneck(negative_cycle);
+			remove_negative_cycle(negative_cycle);
 	}
-	// found = bellmanFord();
+	//
+	cout << "Routing Completed" << endl;
+	show_routing_result();
 	return 0;
 }
 
@@ -251,8 +259,8 @@ void show_all_graph(void) {
 			cout << setw(3) << sources[i].UID << "  ->  SINK #" << setw(3) << j;
 			cout << "  (" << setw(3) << sinks[j].x << ", " << setw(3) << sinks[j].y << ")   ";
 			cout << setw(3) << sinks[j].UID << "     " ;
-			cout << setw(3) << Edges[i][j].distance << "  ";
-			cout << setw(3) << Graph[i][j] << " ";
+			cout << setw(3) << Edges[i][j].distance << "   ";
+			cout << setw(3) << Graph[i][j] << "     ";
 			cout << setw(5) << Edges[i][j].capacity << endl;
 		}
 	}
@@ -308,27 +316,48 @@ void show_distanceTable(void) {
 	cout << endl;
 }
 
+void show_routing_result(void){
+	int area = 0;
+	for (int i = 0; i < N_SORC; ++i) {
+		for (int j = 0; j < N_SINK; ++j) {
+			if (Graph[i][j] == 0)
+				continue;
+			cout << setw(4) << sources[i].x << " " << setw(4) << sources[i].y << " ";
+			cout << setw(4) << sinks[j].x   << " " << setw(4) << sinks[j].y   << " ";
+			cout << setw(4) << Graph[i][j] << endl;
+			area += Graph[i][j] * disMatrix[i][j];
+		}
+	}
+	cout << "Area = " << setw(5) << area << endl;
+}
+
 void update_Graph (int src, int snk) {
-	int flow = 0;
+	int flow;
 	// cout << "Updating graph" << endl;
 	cout << endl;
 	// collect all outbound flows (KCL)
+	flow = 0;
 	for (int k = 0; k < N_SINK; ++k)
 		flow += Graph[src][k];
 	// update remain
+	/*
 	if (flow > sources[src].capacity) {
 		cout << "[UPDATE] Flow out of sources " << src << " is invalid: ";
 	}
-	else {
+	// else {
 		sources[src].remain = sources[src].capacity - flow;
 		cout << "[UPDATE] Flow out of sources " << src << " succeed: ";
 	}
+	*/
+	sources[src].remain = sources[src].capacity - flow;
+	cout << "[UPDATE] Flow out of sources " << src << " updated: ";
 	cout << flow  << "/" << sources[src].capacity << endl;
 	// collect all inbound flows (KCL)
 	flow = 0;
 	for (int k = 0; k < N_SORC; ++k)
 		flow += Graph[k][snk];
 	// update remain
+	/*
 	if (flow > sinks[snk].capacity) {
 		cout << "[UPDATE] Flow into sink " << snk << " is invalid: ";
 	}
@@ -336,7 +365,46 @@ void update_Graph (int src, int snk) {
 		sinks[snk].remain = sinks[snk].capacity - flow;
 		cout << "[UPDATE] Flow into sink " << snk << " succeed: ";
 	}
+	*/
+	sinks[snk].remain = sinks[snk].capacity - flow;
+		cout << "[UPDATE] Flow into sink " << snk << " updated: ";
 	cout << flow  << "/" << sinks[snk].capacity << endl;
+}
+
+void check_flow (void) {
+	int flow = 0;
+	bool passed = true;
+	cout << endl << "Checking for conservativity on all nodes..." << endl;
+	// collect all outbound flows (KCL)
+	for (int src = 0; src < N_SORC; ++src) {
+		flow = 0;
+		for (int k = 0; k < N_SINK; ++k) 
+			flow += Graph[src][k];
+		// update remain
+		if (flow > sources[src].capacity) {
+			cout << "[FLOW_FAIL] Flow out of source " << src << " is invalid: ";
+			cout << flow  << "/" << sources[src].capacity << endl;
+			passed = false;
+		}
+	}
+	// collect all inbound flows (KCL)
+	for (int snk = 0; snk < N_SORC; ++snk) {
+		flow = 0;
+		for (int k = 0; k < N_SORC; ++k)
+			flow += Graph[k][snk];
+		// update remain
+		if (flow > sinks[snk].capacity) {
+			cout << "[FLOW_FAIL] Flow into sink " << snk << " is invalid: ";
+			cout << flow  << "/" << sinks[snk].capacity << endl;
+			passed = false;
+		}
+	}
+	if (passed) {
+		cout << "Flow check passed." << endl;
+	}
+	else {
+		cout << "Flow check failed." << endl;
+	}
 }
 
 void update_rGraph (int src, int snk) {
@@ -346,7 +414,7 @@ void update_rGraph (int src, int snk) {
 	rGraph[src][snk].b_dist = rGraph[src][snk].b_cap == 0 ? 0 : -disMatrix[src][snk];
 }
 
-int find_bottleneck(vector<int> path) {
+void remove_negative_cycle(vector<int> path) {
 	int capacity = 0;
 	int s, t;
 	bool in = false;
@@ -384,11 +452,12 @@ int find_bottleneck(vector<int> path) {
 		t -= N_SORC;
 	/*/
 	// push bottleneck flow to the graph
+	cout << "Removing Negative Cycle..." << endl;
 	for (int i = 0; i < path.size(); ++i) {
 		// Edge (u, v) | v <- u
 		int u = path[i]; // uid
 		int v = path[(i + 1) % path.size()];
-		cout << u << " " << v << endl;
+		// cout << u << " " << v << endl;
 		if (u > v) { // add flow: sink->src @ rGraph
 			Graph[v][u - N_SORC] += capacity;
 			update_Graph(v, u - N_SORC);
@@ -399,30 +468,10 @@ int find_bottleneck(vector<int> path) {
 			update_Graph(u, v - N_SORC);
 			update_rGraph(u, v - N_SORC);
 		}
-		/*
-		if (u < N_SORC) { // src (u) -> sink (v)
-			v -= N_SORC;
-			Graph[u][v] += capacity;
-		}
-		if (u > N_SORC) { // src (v) <- sink (u)
-			u -= N_SORC;
-			Graph[v][u] -= capacity;
-			update_Graph(v, u);
-			update_rGraph(v, u);
-		}
-		if (v > N_SORC) { // src (u) -> sink (v)
-			v -= N_SORC;
-			Graph[u][v] += capacity;
-			update_Graph(u, v);
-			update_rGraph(u, v);
-		}
-		*/
 	}
+	check_flow();
 	cout << endl;
 	show_all_graph();
-	// Graph[s][t] += capacity;
-	//
-	return capacity;
 }
 
 bool bellmanFord(void) {
@@ -461,7 +510,7 @@ bool bellmanFord(void) {
 		update = false;
 		// check all node
 		// cout << "Total  = " << n_node << endl;
-		for (int itr_node = 0; itr_node < n_node; ++itr_node) {
+		for (int itr_node = 0; itr_node < n_node + 1; ++itr_node) {
 			// check all outbound edges of the node
 			if (itr_node < N_SORC) { // for sources
 				// first half indices belong to sources
@@ -527,6 +576,7 @@ bool bellmanFord(void) {
 	for (int i = 0; i < N_SORC; ++i) {
 		for (int j = 0; j < N_SINK; ++j) {
 			int weight, u, v, index;
+			bool* mark = new bool[n_node]();
 			// convert source/sink index to dist_table's index
 			u = rGraph[i][j].src;
 			v = rGraph[i][j].dest + N_SORC;
@@ -536,11 +586,23 @@ bool bellmanFord(void) {
 				if (dist_table[v][DISTANCE] > dist_table[u][DISTANCE] + weight) {
 					// cout << "Negative cycle found on src#" << rGraph[i][j].src << " to snk#" << rGraph[i][j].dest << endl;
 					cout << "Negative cycle found" << endl;
-					for (index = v;;) {
+					//
+					index = v;
+					while (true) {
+						if (mark[index] == false) {
+							mark[index] = true;
+							index = dist_table[index][PARENT];
+						}
+						else // found cycle
+							break;
+					}
+					//
+					int begin = index;
+					while (true) {
 						cout << index << " <- ";
 						negative_cycle.push_back(index);
 						index = dist_table[index][PARENT];
-						if (index == v) {
+						if (index == begin) {
 							found = true;
 							break;
 						}
@@ -555,7 +617,17 @@ bool bellmanFord(void) {
 				if (dist_table[u][DISTANCE] > dist_table[v][DISTANCE] + weight) {
 					// cout << "Negative cycle found on snk#" << rGraph[i][j].dest << " to src#" << rGraph[i][j].src << endl;
 					cout << "Negative cycle found" << endl;
-					for (index = v;;) {
+					index = v;
+					while (true) {
+						if (mark[index] == false) {
+							mark[index] = true;
+							index = dist_table[index][PARENT];
+						}
+						else // found cycle
+							break;
+					}
+					int begin = index;
+					while (true) {
 						cout << index << " <- ";
 						negative_cycle.push_back(index);
 						index = dist_table[index][PARENT];
@@ -563,10 +635,16 @@ bool bellmanFord(void) {
 							found = true;
 							break;
 						}
+						if (index == begin) {
+							found = true;
+							break;
+						}
 					} // end printing
 					cout << index << endl;
 				}
 			} // end checking backward edge
+			if (found)
+				break;
 		} // end itr sink
 		if (found)
 			break;
